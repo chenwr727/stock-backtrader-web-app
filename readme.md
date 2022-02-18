@@ -11,3 +11,13 @@
 ```shell
 pip install -r requirements.txt
 ```
+
+## 运行
+```shell
+streamlit run backtrader_app.py
+```
+
+## 策略
+```shell
+python -m unittest tests.MaStrategyTest
+```
