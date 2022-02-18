@@ -1,4 +1,3 @@
-import codecs
 import datetime
 import logging
 import os
@@ -45,9 +44,6 @@ class MultiprocessHandler(logging.FileHandler):
             print("Failed to create log file: ", e)
             print("log_path：" + self.filePath)
             sys.exit(1)
-
-        if codecs is None:
-            encoding = None
 
         logging.FileHandler.__init__(self, self.filePath, "a+", encoding, delay)
 
