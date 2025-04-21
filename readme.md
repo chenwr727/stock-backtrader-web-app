@@ -5,6 +5,7 @@
 本项目是一个基于 Python 的股票回测 Web 应用，使用了 Streamlit、AkShare、Backtrader 和 Pyecharts 四个核心库。该应用提供了一个用户友好的界面，允许用户获取股票数据、运行回测分析，并通过图表直观地展示结果。
 
 **推荐**
+- [FinVizAI](https://github.com/chenwr727/FinVizAI.git) 一键生成股票与期货分析视频
 - [akshare-gpt](https://github.com/chenwr727/akshare-gpt.git) 将 Akshare 集成到 GPT 的工具中，实现自然语言问答。
 
 ## 主要功能
