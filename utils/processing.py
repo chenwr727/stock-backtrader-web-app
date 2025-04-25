@@ -1,80 +1,86 @@
-import datetime
+import logging
 
 import akshare as ak
 import backtrader as bt
 import backtrader.analyzers as btanalyzers
 import pandas as pd
 import streamlit as st
-import yaml
 
-from .schemas import StrategyBase
+from .logs import logger
+from .schemas import AkshareParams, BacktraderParams, StrategyBase
 
-
-@st.cache(allow_output_mutation=True)
-def gen_stock_df(ak_params: dict) -> pd.DataFrame:
-    """generate stock data
-
-    Args:
-        ak_params (dict): akshare kwargs
-
-    Returns:
-        pd.DataFrame: _description_
-    """
-    return ak.stock_zh_a_hist(**ak_params)
+logging.getLogger("streamlit.runtime.scriptrunner_utils").setLevel(logging.ERROR)
 
 
-@st.cache
-def run_backtrader(
-    stock_df: pd.DataFrame,
-    start_date: datetime.datetime,
-    end_date: datetime.datetime,
-    start_cash: int,
-    commission_fee: float,
-    stake: int,
-    strategy: StrategyBase,
-) -> pd.DataFrame:
-    """run backtrader
+model_hash_func = lambda x: x.model_dump()
+
+
+@st.cache_data(hash_funcs={AkshareParams: model_hash_func})
+def gen_stock_df(ak_params: AkshareParams) -> pd.DataFrame:
+    """生成股票数据
 
     Args:
-        stock_df (pd.DataFrame): stock data
-        start_date (datetime.datetime): back trader from date
-        end_date (datetime.datetime): back trader end date
-        start_cash (int): back trader start cash
-        commission_fee (float): commission fee
-        stake (int): stake
-        strategy (StrategyBase): strategy name an params
+        ak_params (AkshareParams): akshare 参数
 
     Returns:
-        pd.DataFrame: back trader results
+        pd.DataFrame: 股票历史数据
     """
-    stock_df.columns = [
-        "date",
-        "open",
-        "close",
-        "high",
-        "low",
-        "volume",
-    ]
+    df = ak.stock_zh_a_hist(**ak_params.model_dump())
+    if not df.empty:
+        return df[["日期", "开盘", "收盘", "最高", "最低", "成交量"]]
+    return pd.DataFrame()
+
+
+@st.cache_data(hash_funcs={StrategyBase: model_hash_func, BacktraderParams: model_hash_func})
+def run_backtrader(stock_df: pd.DataFrame, strategy: StrategyBase, bt_params: BacktraderParams) -> pd.DataFrame:
+    """运行回测
+
+    Args:
+        stock_df (pd.DataFrame): 股票数据
+        strategy (StrategyBase): 策略名称和参数
+        bt_params (BacktraderParams): 回测参数
+
+    Returns:
+        pd.DataFrame: 回测结果
+    """
+    # 设置日期索引
     stock_df.index = pd.to_datetime(stock_df["date"])
-    data = bt.feeds.PandasData(dataname=stock_df, fromdate=start_date, todate=end_date)
 
+    # 创建数据源
+    data = bt.feeds.PandasData(dataname=stock_df, fromdate=bt_params.start_date, todate=bt_params.end_date)
+
+    # 初始化回测引擎
     cerebro = bt.Cerebro()
     cerebro.adddata(data)
-    cerebro.broker.setcash(start_cash)
-    cerebro.broker.setcommission(commission=commission_fee)
-    cerebro.addsizer(bt.sizers.FixedSize, stake=stake)
-    cerebro.addanalyzer(btanalyzers.SharpeRatio, _name="sharpe")
+    cerebro.broker.setcash(bt_params.start_cash)
+    cerebro.broker.setcommission(commission=bt_params.commission_fee)
+    cerebro.addsizer(bt.sizers.FixedSize, stake=bt_params.stake)
+
+    # 添加分析器
+    cerebro.addanalyzer(btanalyzers.SharpeRatio, _name="sharpe", riskfreerate=0.0)
     cerebro.addanalyzer(btanalyzers.DrawDown, _name="drawdown")
     cerebro.addanalyzer(btanalyzers.Returns, _name="returns")
 
-    strategy_cli = getattr(__import__(f"strategy"), f"{strategy.name}Strategy")
-    cerebro.optstrategy(strategy_cli, **strategy.params)
+    # 动态导入策略类
+    try:
+        strategy_cli = getattr(__import__("strategy"), f"{strategy.name}Strategy")
+        cerebro.optstrategy(strategy_cli, **strategy.params)
+    except (ImportError, AttributeError) as e:
+        logger.error(f"策略导入失败: {e}")
+        raise ValueError(f"无法找到策略: {strategy.name}Strategy")
+
+    # 运行回测
     back = cerebro.run()
+
+    # 处理回测结果
     par_list = []
     for x in back:
+        # 收集策略参数
         par = []
         for param in strategy.params.keys():
             par.append(x[0].params._getkwargs()[param])
+
+        # 添加性能指标
         par.extend(
             [
                 x[0].analyzers.returns.get_analysis()["rnorm100"],
@@ -83,21 +89,9 @@ def run_backtrader(
             ]
         )
         par_list.append(par)
+
+    # 创建结果数据框
     columns = list(strategy.params.keys())
     columns.extend(["return", "dd", "sharpe"])
     par_df = pd.DataFrame(par_list, columns=columns)
     return par_df
-
-
-def load_strategy(yaml_file: str) -> dict:
-    """load strategy
-
-    Args:
-        yaml_file (str): strategy config file path
-
-    Returns:
-        dict: strategy
-    """
-    with open(yaml_file, "r") as f:
-        strategy = yaml.safe_load(f)
-    return strategy

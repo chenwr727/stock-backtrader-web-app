@@ -1,7 +1,7 @@
 import streamlit as st
 
 
-def params_selector_ui(params: dict) -> dict:
+def params_selector_ui(params: dict) -> tuple[bool, dict]:
     params_parse = dict()
     with st.form("params"):
         for param in params:

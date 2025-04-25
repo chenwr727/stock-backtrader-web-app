@@ -3,15 +3,13 @@ from pyecharts import options as opts
 from pyecharts.charts import Bar
 
 
-def draw_result_bar(df: pd.DataFrame, n_scors=3):
+def draw_result_bar(df: pd.DataFrame, n_scors: int = 3) -> Bar:
     params_columns = df.columns[:-n_scors]
     scores_columns = df.columns[-n_scors:]
     x_data = (
         df[params_columns]
         .apply(
-            lambda x: "\n".join(
-                [f"{name}_{value}" for name, value in zip(params_columns, x)]
-            ),
+            lambda x: "\n".join([f"{name}_{value}" for name, value in zip(params_columns, x)]),
             axis=1,
         )
         .values.tolist()

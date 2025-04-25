@@ -1,8 +1,10 @@
-akshare==1.4.27
-backtrader==1.9.76.123
-pandas==1.4.1
-pydantic==1.9.0
-pyecharts==1.9.1
-PyYAML==6.0
-streamlit==1.5.1
+akshare==1.16.81
+backtrader==1.9.78.123
+loguru==0.7.3
+pandas==2.2.3
+pre-commit==4.2.0
+pydantic==2.11.3
+pyecharts==2.0.8
+PyYAML==6.0.2
+streamlit==1.44.1
 streamlit_echarts==0.4.0

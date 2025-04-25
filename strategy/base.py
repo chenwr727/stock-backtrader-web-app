@@ -1,5 +1,8 @@
+from typing import Optional
+
 import backtrader as bt
-from utils.logs import LOGGER
+
+from utils.logs import logger
 
 
 class BaseStrategy(bt.Strategy):
@@ -8,13 +11,13 @@ class BaseStrategy(bt.Strategy):
     _name = "base"
     params = (("printlog", False),)
 
-    def log(self, txt, dt=None, doprint=False):
-        """Logging function fot this strategy"""
+    def log(self, txt: str, dt: Optional[bt.datetime.date] = None, doprint: bool = False) -> None:
+        """Logging function for this strategy"""
         if self.params.printlog or doprint:
             dt = dt or self.datas[0].datetime.date(0)
-            LOGGER.info("%s, %s" % (dt.isoformat(), txt))
+            logger.info("%s, %s" % (dt.isoformat(), txt))
 
-    def notify_order(self, order):
+    def notify_order(self, order: bt.OrderBase) -> None:
         if order.status in [order.Submitted, order.Accepted]:
             # Buy/Sell order submitted/accepted to/by broker - Nothing to do
             return
@@ -44,21 +47,18 @@ class BaseStrategy(bt.Strategy):
         # Write down: no pending order
         self.order = None
 
-    def notify_trade(self, trade):
+    def notify_trade(self, trade: bt.Trade) -> None:
         if not trade.isclosed:
             return
 
         self.log("OPERATION PROFIT, GROSS %.2f, NET %.2f" % (trade.pnl, trade.pnlcomm))
 
-    def next(self):
+    def next(self) -> None:
         pass
 
-    def stop(self):
-        params = [
-            f"{k}_{v}" for k, v in self.params._getkwargs().items() if k != "printlog"
-        ]
+    def stop(self) -> None:
+        params = [f"{k}_{v}" for k, v in self.params._getkwargs().items() if k != "printlog"]
         self.log(
-            "(%s %s) Ending Value %.2f"
-            % (self._name, " ".join(params), self.broker.getvalue()),
+            "(%s %s) Ending Value %.2f" % (self._name, " ".join(params), self.broker.getvalue()),
             doprint=True,
         )

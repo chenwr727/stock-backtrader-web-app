@@ -1,25 +1,25 @@
 import pandas as pd
 import pyecharts.options as opts
-from pyecharts import options as opts
 from pyecharts.charts import Bar, Grid, Kline, Line
 
 
-def split_data(df: pd.DataFrame):
+def split_data(df: pd.DataFrame) -> tuple[list[str], list[list[float]], pd.Series, list[list[float]]]:
     x_data = df["日期"].values.tolist()
     y_data = df[["开盘", "收盘", "最低", "最高"]].values.tolist()
     df_close = df["收盘"]
 
     df["index"] = df.index
-    df["rise"] = df[["开盘", "收盘"]].apply(lambda x: 1 if x[0] > x[1] else -1, axis=1)
+    df["rise"] = df[["开盘", "收盘"]].apply(lambda x: 1 if x.iloc[0] > x.iloc[1] else -1, axis=1)
     y_vol = df[["index", "成交量", "rise"]].values.tolist()
     return x_data, y_data, df_close, y_vol
 
 
-def calculate_ma(day_count: int, df: pd.DataFrame):
-    return df.rolling(day_count).mean().fillna("-").values.tolist()
+def calculate_ma(day_count: int, df: pd.DataFrame) -> list[float]:
+    df_ma = df.rolling(day_count).mean().round(2).fillna("-")
+    return df_ma.values.tolist()
 
 
-def draw_pro_kline(df: pd.DataFrame):
+def draw_pro_kline(df: pd.DataFrame) -> Grid:
     x_data, y_data, df_close, y_vol = split_data(df)
 
     kline = (
@@ -31,15 +31,13 @@ def draw_pro_kline(df: pd.DataFrame):
             itemstyle_opts=opts.ItemStyleOpts(color="#ec0000", color0="#00da3c"),
         )
         .set_global_opts(
-            legend_opts=opts.LegendOpts(
-                is_show=False, pos_bottom=10, pos_left="center"
-            ),
+            legend_opts=opts.LegendOpts(is_show=False, pos_bottom=10, pos_left="center"),
             datazoom_opts=[
                 opts.DataZoomOpts(
                     is_show=False,
                     type_="inside",
                     xaxis_index=[0, 1],
-                    range_start=98,
+                    range_start=80,
                     range_end=100,
                 ),
                 opts.DataZoomOpts(
@@ -47,15 +45,13 @@ def draw_pro_kline(df: pd.DataFrame):
                     xaxis_index=[0, 1],
                     type_="slider",
                     pos_top="85%",
-                    range_start=98,
+                    range_start=80,
                     range_end=100,
                 ),
             ],
             yaxis_opts=opts.AxisOpts(
                 is_scale=True,
-                splitarea_opts=opts.SplitAreaOpts(
-                    is_show=True, areastyle_opts=opts.AreaStyleOpts(opacity=1)
-                ),
+                splitarea_opts=opts.SplitAreaOpts(is_show=True, areastyle_opts=opts.AreaStyleOpts(opacity=1)),
             ),
             tooltip_opts=opts.TooltipOpts(
                 trigger="axis",
@@ -142,7 +138,7 @@ def draw_pro_kline(df: pd.DataFrame):
                 type_="category",
                 is_scale=True,
                 grid_index=1,
-                boundary_gap=False,
+                boundary_gap=True,
                 axisline_opts=opts.AxisLineOpts(is_on_zero=False),
                 axistick_opts=opts.AxisTickOpts(is_show=False),
                 splitline_opts=opts.SplitLineOpts(is_show=False),
@@ -179,9 +175,7 @@ def draw_pro_kline(df: pd.DataFrame):
     )
     grid_chart.add(
         bar,
-        grid_opts=opts.GridOpts(
-            pos_left="10%", pos_right="8%", pos_top="63%", height="16%"
-        ),
+        grid_opts=opts.GridOpts(pos_left="10%", pos_right="8%", pos_top="63%", height="16%"),
     )
 
     return grid_chart
